@@ -16,6 +16,7 @@ Watching rooms does not require a JWT.
 ```
 X-Webhook-Signature: sha256=<hmac of raw JSON>
 X-Webhook-Event: bid.created
+X-Spruce-Origin: https://am.local
 ```
 
 ```json

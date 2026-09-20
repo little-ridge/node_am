@@ -3,22 +3,22 @@ import type { SpruceNodeApp, SpruceNodeModule } from '../../node_core/src/types.
 export const name = '@little-ridge/node_am';
 
 export async function register(app: SpruceNodeApp): Promise<void> {
-  app.rooms.allow(/^auction:\d+$/);
-  app.rooms.allow(/^lot:\d+$/);
+  app.rooms.allow(/^auction:\d+$/, 'am');
+  app.rooms.allow(/^lot:\d+$/, 'am');
 
-  app.webhooks.on('am/bid', (payload) => {
+  app.webhooks.on('am/bid', (payload, live) => {
     const auctionId = asPositiveInt(payload.auction_id ?? payload.auctionId);
     const lotId = asPositiveInt(payload.lot_id ?? payload.lotId);
     const amount = asAmount(payload.amount);
     const bidId = asPositiveInt(payload.bid_id ?? payload.bidId);
 
     if (auctionId === 0 || lotId === 0 || amount === '') {
-      app.http.log.warn({ payload }, 'ignored am/bid webhook');
+      live.http.log.warn({ payload }, 'ignored am/bid webhook');
       return;
     }
 
     const rooms = [`auction:${auctionId}`, `lot:${lotId}`];
-    app.hub.broadcast(rooms, {
+    live.hub.broadcast(rooms, {
       type: 'event',
       event: 'bid.created',
       rooms,
