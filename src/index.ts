@@ -17,17 +17,34 @@ export async function register(app: SpruceNodeApp): Promise<void> {
       return;
     }
 
+    const closesAt = asPositiveInt(payload.closes_at ?? payload.closesAt);
+    const closedAt = asClosedAt(payload.closed_at ?? payload.closedAt);
     const rooms = [`auction:${auctionId}`, `lot:${lotId}`];
+    const eventPayload: {
+      bidId: number;
+      auctionId: number;
+      lotId: number;
+      amount: string;
+      closesAt?: number;
+      closedAt?: string;
+    } = {
+      bidId,
+      auctionId,
+      lotId,
+      amount,
+    };
+    if (closesAt > 0) {
+      eventPayload.closesAt = closesAt;
+      if (closedAt !== '') {
+        eventPayload.closedAt = closedAt;
+      }
+    }
+
     live.hub.broadcast(rooms, {
       type: 'event',
       event: 'bid.created',
       rooms,
-      payload: {
-        bidId,
-        auctionId,
-        lotId,
-        amount,
-      },
+      payload: eventPayload,
     });
   });
 }
@@ -40,6 +57,15 @@ export default {
 function asPositiveInt(value: unknown): number {
   const n = typeof value === 'number' ? value : Number.parseInt(String(value ?? ''), 10);
   return Number.isFinite(n) && n > 0 ? Math.trunc(n) : 0;
+}
+
+function asClosedAt(value: unknown): string {
+  const raw = String(value ?? '').trim();
+  if (!/^\d{4}\/\d{2}\/\d{2} \d{1,2}:\d{2}[ap]m$/.test(raw)) {
+    return '';
+  }
+
+  return raw;
 }
 
 function asAmount(value: unknown): string {
