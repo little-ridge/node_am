@@ -24,8 +24,13 @@ X-Spruce-Origin: https://am.local
   "bid_id": 12,
   "auction_id": 3,
   "lot_id": 44,
-  "amount": "150.00"
+  "amount": "150.00",
+  "lot_title": "Vintage Rolex Submariner",
+  "lot_url": "https://am.local/lot/44",
+  "image": "https://am.local/wp-content/uploads/lot-44.jpg",
+  "focal_x": 0.5,
+  "focal_y": 0.33
 }
 ```
 
-`user_id` may be present on the webhook; it is not broadcast to browsers.
+`lot_title`, `lot_url`, `image`, `focal_x`, and `focal_y` are optional and are broadcast as `lotTitle`, `lotUrl`, `image`, `focalX`, and `focalY` (`focalX`/`focalY` only when an image is included). `user_id` is broadcast as `userId`.

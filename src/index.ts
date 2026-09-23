@@ -22,6 +22,11 @@ export async function register(app: SpruceNodeApp): Promise<void> {
     const userId = asPositiveInt(payload.user_id ?? payload.userId);
     const watchCount = asCount(payload.watch_count ?? payload.watchCount);
     const bidCount = asCount(payload.bid_count ?? payload.bidCount);
+    const lotTitle = asText(payload.lot_title ?? payload.lotTitle, 500);
+    const lotUrl = asUrl(payload.lot_url ?? payload.lotUrl, 2048);
+    const image = asUrl(payload.image ?? payload.image_url ?? payload.imageUrl, 2048);
+    const focalX = asUnitInterval(payload.focal_x ?? payload.focalX);
+    const focalY = asUnitInterval(payload.focal_y ?? payload.focalY);
     const rooms = [`auction:${auctionId}`, `lot:${lotId}`];
     const eventPayload: {
       bidId: number;
@@ -33,6 +38,11 @@ export async function register(app: SpruceNodeApp): Promise<void> {
       bidCount?: number;
       closesAt?: number;
       closedAt?: string;
+      lotTitle?: string;
+      lotUrl?: string;
+      image?: string;
+      focalX?: number;
+      focalY?: number;
     } = {
       bidId,
       auctionId,
@@ -52,6 +62,21 @@ export async function register(app: SpruceNodeApp): Promise<void> {
       eventPayload.closesAt = closesAt;
       if (closedAt !== '') {
         eventPayload.closedAt = closedAt;
+      }
+    }
+    if (lotTitle !== '') {
+      eventPayload.lotTitle = lotTitle;
+    }
+    if (lotUrl !== '') {
+      eventPayload.lotUrl = lotUrl;
+    }
+    if (image !== '') {
+      eventPayload.image = image;
+      if (focalX !== undefined) {
+        eventPayload.focalX = focalX;
+      }
+      if (focalY !== undefined) {
+        eventPayload.focalY = focalY;
       }
     }
 
@@ -128,4 +153,38 @@ function asAmount(value: unknown): string {
 
   const [whole, frac = ''] = raw.split('.');
   return `${whole}.${frac.padEnd(2, '0')}`;
+}
+
+function asText(value: unknown, max: number): string {
+  const raw = String(value ?? '').replace(/\s+/g, ' ').trim();
+  if (raw === '') {
+    return '';
+  }
+
+  return raw.length > max ? raw.slice(0, max) : raw;
+}
+
+function asUrl(value: unknown, max: number): string {
+  const raw = String(value ?? '').trim();
+  if (raw === '' || raw.length > max) {
+    return '';
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return '';
+  }
+
+  return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? raw : '';
+}
+
+function asUnitInterval(value: unknown): number | undefined {
+  if (value == null || value === '') {
+    return undefined;
+  }
+
+  const n = typeof value === 'number' ? value : Number.parseFloat(String(value));
+  return Number.isFinite(n) && n >= 0 && n <= 1 ? n : undefined;
 }
