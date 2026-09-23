@@ -19,12 +19,14 @@ export async function register(app: SpruceNodeApp): Promise<void> {
 
     const closesAt = asPositiveInt(payload.closes_at ?? payload.closesAt);
     const closedAt = asClosedAt(payload.closed_at ?? payload.closedAt);
+    const userId = asPositiveInt(payload.user_id ?? payload.userId);
     const rooms = [`auction:${auctionId}`, `lot:${lotId}`];
     const eventPayload: {
       bidId: number;
       auctionId: number;
       lotId: number;
       amount: string;
+      userId?: number;
       closesAt?: number;
       closedAt?: string;
     } = {
@@ -33,6 +35,9 @@ export async function register(app: SpruceNodeApp): Promise<void> {
       lotId,
       amount,
     };
+    if (userId > 0) {
+      eventPayload.userId = userId;
+    }
     if (closesAt > 0) {
       eventPayload.closesAt = closesAt;
       if (closedAt !== '') {
