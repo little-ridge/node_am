@@ -1,0 +1,19 @@
+{
+  "name": "node_am live-bus dev",
+  "install": "./.cursor/install.sh",
+  "start": "./.cursor/start.sh",
+  "terminals": [
+    {
+      "name": "node-host",
+      "command": "./.cursor/run-host.sh",
+      "description": "Little Ridge Node live-bus host (lrtc_node) with node_core + node_am loaded, on http://127.0.0.1:8787. Health: GET /health. Verify end-to-end from ../lrtc_node with `npm run verify` (live webhook->broadcast) and `npm run verify-sites` (multi-tenant isolation)."
+    }
+  ],
+  "ports": [
+    { "name": "node-host", "port": 8787 }
+  ],
+  "repositoryDependencies": [
+    "github.com/little-ridge/lrtc_node",
+    "github.com/little-ridge/node_core"
+  ]
+}
