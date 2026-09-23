@@ -20,6 +20,8 @@ export async function register(app: SpruceNodeApp): Promise<void> {
     const closesAt = asPositiveInt(payload.closes_at ?? payload.closesAt);
     const closedAt = asClosedAt(payload.closed_at ?? payload.closedAt);
     const userId = asPositiveInt(payload.user_id ?? payload.userId);
+    const watchCount = asCount(payload.watch_count ?? payload.watchCount);
+    const bidCount = asCount(payload.bid_count ?? payload.bidCount);
     const rooms = [`auction:${auctionId}`, `lot:${lotId}`];
     const eventPayload: {
       bidId: number;
@@ -27,6 +29,8 @@ export async function register(app: SpruceNodeApp): Promise<void> {
       lotId: number;
       amount: string;
       userId?: number;
+      watchCount?: number;
+      bidCount?: number;
       closesAt?: number;
       closedAt?: string;
     } = {
@@ -37,6 +41,12 @@ export async function register(app: SpruceNodeApp): Promise<void> {
     };
     if (userId > 0) {
       eventPayload.userId = userId;
+    }
+    if (watchCount !== undefined) {
+      eventPayload.watchCount = watchCount;
+    }
+    if (bidCount !== undefined) {
+      eventPayload.bidCount = bidCount;
     }
     if (closesAt > 0) {
       eventPayload.closesAt = closesAt;
@@ -52,12 +62,45 @@ export async function register(app: SpruceNodeApp): Promise<void> {
       payload: eventPayload,
     });
   });
+
+  app.webhooks.on('am/watch', (payload, live) => {
+    const auctionId = asPositiveInt(payload.auction_id ?? payload.auctionId);
+    const lotId = asPositiveInt(payload.lot_id ?? payload.lotId);
+    const watchCount = asCount(payload.watch_count ?? payload.watchCount);
+    const bidCount = asCount(payload.bid_count ?? payload.bidCount);
+
+    if (auctionId === 0 || lotId === 0 || watchCount === undefined || bidCount === undefined) {
+      live.http.log.warn({ payload }, 'ignored am/watch webhook');
+      return;
+    }
+
+    const rooms = [`auction:${auctionId}`, `lot:${lotId}`];
+    live.hub.broadcast(rooms, {
+      type: 'event',
+      event: 'lot.counters',
+      rooms,
+      payload: {
+        auctionId,
+        lotId,
+        watchCount,
+        bidCount,
+      },
+    });
+  });
 }
 
 export default {
   name,
   register,
 } satisfies SpruceNodeModule;
+
+function asCount(value: unknown): number | undefined {
+  if (value == null || value === '') {
+    return undefined;
+  }
+  const n = typeof value === 'number' ? value : Number.parseInt(String(value), 10);
+  return Number.isFinite(n) && n >= 0 ? Math.trunc(n) : undefined;
+}
 
 function asPositiveInt(value: unknown): number {
   const n = typeof value === 'number' ? value : Number.parseInt(String(value ?? ''), 10);
