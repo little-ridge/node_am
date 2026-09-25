@@ -27,6 +27,7 @@ export async function register(app: SpruceNodeApp): Promise<void> {
     const image = asUrl(payload.image ?? payload.image_url ?? payload.imageUrl, 2048);
     const focalX = asUnitInterval(payload.focal_x ?? payload.focalX);
     const focalY = asUnitInterval(payload.focal_y ?? payload.focalY);
+    const imageFit = asImageFit(payload.image_fit ?? payload.imageFit);
     const rooms = [`auction:${auctionId}`, `lot:${lotId}`];
     const eventPayload: {
       bidId: number;
@@ -43,6 +44,7 @@ export async function register(app: SpruceNodeApp): Promise<void> {
       image?: string;
       focalX?: number;
       focalY?: number;
+      imageFit?: 'contain';
     } = {
       bidId,
       auctionId,
@@ -77,6 +79,9 @@ export async function register(app: SpruceNodeApp): Promise<void> {
       }
       if (focalY !== undefined) {
         eventPayload.focalY = focalY;
+      }
+      if (imageFit === 'contain') {
+        eventPayload.imageFit = 'contain';
       }
     }
 
@@ -187,4 +192,8 @@ function asUnitInterval(value: unknown): number | undefined {
 
   const n = typeof value === 'number' ? value : Number.parseFloat(String(value));
   return Number.isFinite(n) && n >= 0 && n <= 1 ? n : undefined;
+}
+
+function asImageFit(value: unknown): 'contain' | '' {
+  return String(value ?? '').trim() === 'contain' ? 'contain' : '';
 }

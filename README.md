@@ -33,4 +33,4 @@ X-Spruce-Origin: https://am.local
 }
 ```
 
-`lot_title`, `lot_url`, `image`, `focal_x`, and `focal_y` are optional and are broadcast as `lotTitle`, `lotUrl`, `image`, `focalX`, and `focalY` (`focalX`/`focalY` only when an image is included). `user_id` is broadcast as `userId`.
+`lot_title`, `lot_url`, `image`, `focal_x`, `focal_y`, and `image_fit` are optional and are broadcast as `lotTitle`, `lotUrl`, `image`, `focalX`, `focalY`, and `imageFit` (`focalX`/`focalY` only when an image is included; `imageFit` only when it is `contain`). `user_id` is broadcast as `userId`.
