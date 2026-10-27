@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import type { SpruceNodeApp, SpruceNodeModule } from '../../node_core/src/types.ts';
 
 export const name = '@little-ridge/node_am';
@@ -117,6 +118,78 @@ export async function register(app: SpruceNodeApp): Promise<void> {
       },
     });
   });
+
+  // The socket host only routes auth and subscribe. After the browser's
+  // socket connects, it GETs this for the lots already on the page.
+  app.http.get('/am/snapshot', async (request, reply) => {
+    reply.header('Cache-Control', 'private, no-store');
+
+    const origin = headerValue(request.headers.origin);
+    const site = (origin ? app.sites.resolve(origin) : undefined) ?? app.sites.defaultSite();
+    if (!site) {
+      return reply.code(400).send({ error: 'unknown_origin' });
+    }
+    if (site.webhookSecret === '') {
+      return reply.code(503).send({ error: 'webhook_unconfigured' });
+    }
+
+    const query = isQuery(request.query) ? request.query : {};
+    const lotIds = parseLotIds(query.lots);
+    if (lotIds === null) {
+      return reply.code(400).send({ error: 'lots' });
+    }
+
+    let userId = 0;
+    const token = bearer(request.headers.authorization);
+    if (token !== '') {
+      try {
+        const claims = await app.jwt.verify(token, site.origin);
+        userId = asPositiveInt(claims.sub);
+      } catch {
+        return reply.code(401).send({ error: 'invalid_token' });
+      }
+      if (userId <= 0) {
+        return reply.code(401).send({ error: 'invalid_token' });
+      }
+    }
+
+    const canonical = lotIds.join(',');
+    const signature = createHmac('sha256', site.webhookSecret)
+      .update(`${userId}\n${canonical}`)
+      .digest('hex');
+    const root = (site.wpBaseUrl || site.origin).replace(/\/+$/, '');
+    const url = `${root}/wp-json/spruce-am/v1/lot-snapshot?lots=${encodeURIComponent(canonical)}&user=${userId}`;
+
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        redirect: 'manual',
+        signal: AbortSignal.timeout(4000),
+        headers: {
+          Accept: 'application/json',
+          'X-Spruce-Snapshot': `sha256=${signature}`,
+        },
+      });
+    } catch {
+      return reply.code(502).send({ error: 'snapshot_unavailable' });
+    }
+
+    if (response.status >= 300 && response.status < 400) {
+      return reply.code(502).send({ error: 'snapshot_unavailable' });
+    }
+    if (!response.ok) {
+      return reply.code(response.status === 401 || response.status === 503 ? response.status : 502).send({
+        error: 'snapshot_unavailable',
+      });
+    }
+
+    const body = await response.json();
+    if (!isRecord(body) || !Array.isArray(body.lots)) {
+      return reply.code(502).send({ error: 'snapshot_unavailable' });
+    }
+
+    return { lots: body.lots };
+  });
 }
 
 export default {
@@ -196,4 +269,47 @@ function asUnitInterval(value: unknown): number | undefined {
 
 function asImageFit(value: unknown): 'contain' | '' {
   return String(value ?? '').trim() === 'contain' ? 'contain' : '';
+}
+
+function parseLotIds(value: unknown): number[] | null {
+  const raw = typeof value === 'string' ? value : '';
+  if (raw === '' || raw.length > 400) {
+    return null;
+  }
+
+  const ids = new Set<number>();
+  for (const part of raw.split(',')) {
+    const id = asPositiveInt(part.trim());
+    if (id <= 0) {
+      return null;
+    }
+    ids.add(id);
+    if (ids.size > 48) {
+      return null;
+    }
+  }
+
+  return ids.size === 0 ? null : [...ids].sort((a, b) => a - b);
+}
+
+function bearer(value: unknown): string {
+  const header = headerValue(value);
+  const match = /^Bearer\s+(\S+)$/i.exec(header);
+  return match ? match[1] : '';
+}
+
+function headerValue(value: unknown): string {
+  if (Array.isArray(value)) {
+    return typeof value[0] === 'string' ? value[0] : '';
+  }
+
+  return typeof value === 'string' ? value : '';
+}
+
+function isQuery(value: unknown): value is { lots?: unknown } {
+  return typeof value === 'object' && value !== null;
+}
+
+function isRecord(value: unknown): value is { lots?: unknown } {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }

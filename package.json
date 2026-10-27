@@ -1,6 +1,6 @@
 {
   "name": "@little-ridge/node_am",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Auction Manager live rooms and bid broadcast for Spruce.",
   "type": "module",
   "main": "./src/index.ts",
